@@ -1,11 +1,12 @@
+#define _POSIX_C_SOURCE 200112L
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
 #include <sys/socket.h>
+#include <netdb.h>
 #include <unistd.h>
 #include <string.h>
-#include <stdlib.h>
 #include <ctype.h>
-
 
 #define BODY_MAX 100000
 #define MAX_FIELDS 4
@@ -78,4 +79,13 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Must have 1 argument\n");
         exit(EXIT_FAILURE);
     }
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    struct addrinfo* list;
+    char* host = "localhost"; //testing purposes
+    char* port = "8080";
+    int r = getaddrinfo(host, port, &hints, &list);
 }

@@ -237,6 +237,27 @@ void test_read_write() {
     close(p4[0]); close(p4[1]);
 }
 
+//checks name not empty, every character legal, does exceed 32 chars
+int is_valid_name(const char *s){
+    int len = 0;
+    if(s == NULL || s[0] == '\0'){
+        return 0;
+    }
+    for(int i = 0; s[i] != '\0'; i++){
+        char c = s[i];
+        //isalpha checks if alphabet or not
+        if(!isalpha((unsigned char)c)) && !isdigit((unsigned char)c) && 
+        c != '-' && c != '_') {
+            return 0;
+        }
+        len++;
+        if(len > 32){
+            return 0;
+        }
+    }
+    return 1;
+}
+
 int main(int argc, char* argv[]) {
     test_read_write();
     if (argc != 2) {

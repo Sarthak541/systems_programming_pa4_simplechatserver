@@ -213,7 +213,6 @@ int is_valid_name(const char *s){
 }
 
 int main(int argc, char* argv[]) {
-    test_read_write();
     if (argc != 2) {
         fprintf(stderr, "Must have 1 argument\n");
         exit(EXIT_FAILURE);

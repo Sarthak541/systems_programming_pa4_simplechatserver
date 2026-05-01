@@ -70,7 +70,7 @@ int read_message(int fd, Message *msg){
     char length_str[8];
     int r;
     //field 1: version
-    int r = read_each_field(fd, version_str, sizeof(version_str));
+    r = read_each_field(fd, version_str, sizeof(version_str));
     if(r<0){
         return r;
     }
@@ -173,6 +173,9 @@ int main(int argc, char* argv[]) {
     if (return_socket < 0) {
         fprintf(stderr, "Error accepting socket\n");
         exit(EXIT_FAILURE);
+    }
+    else {
+        fprintf(stdout, "Working TCP/IP!\n");
     }
     close(return_socket);
     close(my_socket);

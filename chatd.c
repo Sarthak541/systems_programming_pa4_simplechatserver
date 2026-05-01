@@ -231,6 +231,25 @@ int is_valid_status(const char *s){
     return 1;
 }
 
+//max len: 80, 32 - 126 chars, at least 1 arg
+int is_valid_message(const char *s){
+    if(s == NULL || s[0] == '\0'){
+        return 0;
+    }
+    int len = 0;
+    for(int i = 0; s[i] != '\0'; i++){
+        unsigned char c = (unsigned char)s[i];
+        if(c < 32 || c > 126){
+            return 0;
+        }
+        len++;
+        if(len > 80){
+            return 0;
+        }
+    }
+    return 1;
+}
+
 int main(int argc, char* argv[]) {
     if (argc != 2) {
         fprintf(stderr, "Must have 1 argument\n");

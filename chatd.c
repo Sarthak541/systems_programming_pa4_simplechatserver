@@ -11,6 +11,24 @@
 #define BODY_MAX 100000
 #define MAX_FIELDS 4
 #define MAX_CONNECTION 10
+#define MAX_NAME     33
+#define MAX_STATUS   65
+#define MAX_CLIENTS  100
+
+
+typedef struct {
+    int  fd;
+    char name[MAX_NAME];
+    char status[MAX_STATUS];
+    int  registered;
+} User;
+
+typedef struct {
+    User           *users[MAX_CLIENTS];
+    int             count;
+    pthread_mutex_t lock;
+} ServerState;
+
 
 typedef struct {
     int   version;              // always 1 for this protocol 

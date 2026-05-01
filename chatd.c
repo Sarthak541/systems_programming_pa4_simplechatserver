@@ -10,6 +10,7 @@
 
 #define BODY_MAX 100000
 #define MAX_FIELDS 4
+#define MAX_CONNECTION 10
 
 typedef struct {
     int   version;              // always 1 for this protocol 
@@ -92,5 +93,31 @@ int main(int argc, char* argv[]) {
     if (r!=0) {
         //handles error specifically for getaddrinfo
         gai_strerror(r);
+        exit(EXIT_FAILURE);
     }
+    
+    struct addrinfo* info;
+    int my_socket;
+
+    for (info = list; info != NULL; info = info->ai_next) {
+        my_socket = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
+        if (my_socket < 0) {
+            continue;
+        }
+        int bind_success = bind(my_socket, info->ai_addr, info->ai_addrlen);
+        if (bind_success < 0) {
+            close(my_socket);
+            continue;
+        }
+        int listen_val = listen(my_socket, MAX_CONNECTION);
+
+        break;
+    }
+    freeaddrinfo(list);
+    close(my_socket);
+    if (info == NULL) {
+        fprintf(stderr, "Unable to bind\n");
+        exit(EXIT_FAILURE);
+    }
+
 }

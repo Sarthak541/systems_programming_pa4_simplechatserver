@@ -88,4 +88,9 @@ int main(int argc, char* argv[]) {
     char* host = "localhost"; //testing purposes
     char* port = "8080";
     int r = getaddrinfo(host, port, &hints, &list);
+
+    if (r!=0) {
+        //handles error specifically for getaddrinfo
+        gai_strerror(r);
+    }
 }

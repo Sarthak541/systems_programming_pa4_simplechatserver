@@ -171,35 +171,52 @@ int sent_message(int fd, const char *code, const char *f1, const char *f2, const
     return 0;
 }
 
-void test_read_write() {
-    int pipefd[2];
-    // pipefd[0] = read end, pipefd[1] = write end
-    pipe(pipefd);
-
-    // use sent_message to write a message into the pipe
-    sent_message(pipefd[1], "MSG", "#all", "Bob", "Hello, world!");
-
-    // use read_message to read it back out
-    Message msg;
-    int r = read_message(pipefd[0], &msg);
-
-    // check the results
-    if (r != 0) {
-        fprintf(stderr, "TEST FAILED: read_message returned %d\n", r);
-        return;
+void print_message(Message *msg) {
+    fprintf(stdout, "version:     %d\n", msg->version);
+    fprintf(stdout, "code:        %s\n", msg->code);
+    fprintf(stdout, "body_len:    %d\n", msg->body_len);
+    fprintf(stdout, "field_count: %d\n", msg->field_count);
+    for (int i = 0; i < msg->field_count; i++) {
+        fprintf(stdout, "fields[%d]:   %s\n", i, msg->fields[i]);
     }
+    fprintf(stdout, "\n");
+}
 
-    // print everything so you can verify by eye
-    fprintf(stdout, "version:     %d\n",   msg.version);
-    fprintf(stdout, "code:        %s\n",   msg.code);
-    fprintf(stdout, "body_len:    %d\n",   msg.body_len);
-    fprintf(stdout, "field_count: %d\n",   msg.field_count);
-    fprintf(stdout, "fields[0]:   %s\n",   msg.fields[0]);
-    fprintf(stdout, "fields[1]:   %s\n",   msg.fields[1]);
-    fprintf(stdout, "fields[2]:   %s\n",   msg.fields[2]);
+void test_read_write() {
+    Message msg;
+    int r;
 
-    close(pipefd[0]);
-    close(pipefd[1]);
+    // test 1: MSG with three fields
+    int p1[2]; pipe(p1);
+    sent_message(p1[1], "MSG", "#all", "Bob", "Hello, world!");
+    r = read_message(p1[0], &msg);
+    if (r != 0) { fprintf(stderr, "TEST 1 FAILED: %d\n", r); }
+    else { fprintf(stdout, "TEST 1 PASSED:\n"); print_message(&msg); }
+    close(p1[0]); close(p1[1]);
+
+    // test 2: NAM with one field
+    int p2[2]; pipe(p2);
+    sent_message(p2[1], "NAM", "Bob", NULL, NULL);
+    r = read_message(p2[0], &msg);
+    if (r != 0) { fprintf(stderr, "TEST 2 FAILED: %d\n", r); }
+    else { fprintf(stdout, "TEST 2 PASSED:\n"); print_message(&msg); }
+    close(p2[0]); close(p2[1]);
+
+    // test 3: ERR with two fields
+    int p3[2]; pipe(p3);
+    sent_message(p3[1], "ERR", "1", "Name in use", NULL);
+    r = read_message(p3[0], &msg);
+    if (r != 0) { fprintf(stderr, "TEST 3 FAILED: %d\n", r); }
+    else { fprintf(stdout, "TEST 3 PASSED:\n"); print_message(&msg); }
+    close(p3[0]); close(p3[1]);
+
+    // test 4: MSG with empty sender
+    int p4[2]; pipe(p4);
+    sent_message(p4[1], "MSG", "", "Alice", "Private message");
+    r = read_message(p4[0], &msg);
+    if (r != 0) { fprintf(stderr, "TEST 4 FAILED: %d\n", r); }
+    else { fprintf(stdout, "TEST 4 PASSED:\n"); print_message(&msg); }
+    close(p4[0]); close(p4[1]);
 }
 
 int main(int argc, char* argv[]) {

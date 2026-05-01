@@ -140,7 +140,7 @@ int sent_message(int fd, const char *code, const char *f1, const char *f2, const
     }
     //assemble into one buffer
     char buf[BODY_MAX + 32];
-    int header_len = snprintf(buf, sizeof(buf), "1|%s|%d", code, body_len);
+    int header_len = snprintf(buf, sizeof(buf), "1|%s|%d|", code, body_len);
     //append all field followed by '|'
     int pos = header_len;
     if(f1){
@@ -171,7 +171,39 @@ int sent_message(int fd, const char *code, const char *f1, const char *f2, const
     return 0;
 }
 
+void test_read_write() {
+    int pipefd[2];
+    // pipefd[0] = read end, pipefd[1] = write end
+    pipe(pipefd);
+
+    // use sent_message to write a message into the pipe
+    sent_message(pipefd[1], "MSG", "#all", "Bob", "Hello, world!");
+
+    // use read_message to read it back out
+    Message msg;
+    int r = read_message(pipefd[0], &msg);
+
+    // check the results
+    if (r != 0) {
+        fprintf(stderr, "TEST FAILED: read_message returned %d\n", r);
+        return;
+    }
+
+    // print everything so you can verify by eye
+    fprintf(stdout, "version:     %d\n",   msg.version);
+    fprintf(stdout, "code:        %s\n",   msg.code);
+    fprintf(stdout, "body_len:    %d\n",   msg.body_len);
+    fprintf(stdout, "field_count: %d\n",   msg.field_count);
+    fprintf(stdout, "fields[0]:   %s\n",   msg.fields[0]);
+    fprintf(stdout, "fields[1]:   %s\n",   msg.fields[1]);
+    fprintf(stdout, "fields[2]:   %s\n",   msg.fields[2]);
+
+    close(pipefd[0]);
+    close(pipefd[1]);
+}
+
 int main(int argc, char* argv[]) {
+    test_read_write();
     if (argc != 2) {
         fprintf(stderr, "Must have 1 argument\n");
         exit(EXIT_FAILURE);

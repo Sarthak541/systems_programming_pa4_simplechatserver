@@ -165,7 +165,18 @@ int main(int argc, char* argv[]) {
         break;
     }
     freeaddrinfo(list);
+
+    //use sockaddr_storage because remote address can be ipv4 OR ipv6
+    struct sockaddr_storage remote_address;
+    socklen_t remote_address_len = sizeof(remote_address);
+    int return_socket = accept(my_socket, &remote_address, &remote_address_len);
+    if (return_socket < 0) {
+        fprintf(stderr, "Error accepting socket\n");
+        exit(EXIT_FAILURE);
+    }
+    close(return_socket);
     close(my_socket);
+    
     if (info == NULL) {
         fprintf(stderr, "Unable to bind\n");
         exit(EXIT_FAILURE);

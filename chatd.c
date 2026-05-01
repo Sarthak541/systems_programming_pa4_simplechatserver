@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
+#include <pthread.h>
+
 
 #define BODY_MAX 100000
 #define MAX_FIELDS 4
@@ -198,7 +200,7 @@ int is_valid_name(const char *s){
     for(int i = 0; s[i] != '\0'; i++){
         char c = s[i];
         //isalpha checks if alphabet or not
-        if(!isalpha((unsigned char)c)) && !isdigit((unsigned char)c) && 
+        if(!isalpha((unsigned char)c) && !isdigit((unsigned char)c) && 
         c != '-' && c != '_') {
             return 0;
         }

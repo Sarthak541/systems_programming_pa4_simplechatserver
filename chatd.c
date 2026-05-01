@@ -126,6 +126,51 @@ int read_message(int fd, Message *msg){
     return 0;
 }
 
+int sent_message(int fd, const char *code, const char *f1, const char *f2, const char *f3){
+    int body_len = 0;
+    //do +1 for '\0'
+    if(f1){
+        body_len += strlen(f1) + 1;
+    }
+    if(f2){
+        body_len += strlen(f2) + 1;
+    }
+    if(f3){
+        body_len += strlen(f3) + 1;
+    }
+    //assemble into one buffer
+    char buf[BODY_MAX + 32];
+    int header_len = snprintf(buf, sizeof(buf), "1|%s|%d", code, body_len);
+    //append all field followed by '|'
+    int pos = header_len;
+    if(f1){
+        strcpy(buf + pos, f1);
+        pos += strlen(f1);
+        buf[pos++] = '|';
+    }
+    if(f2){
+        strcpy(buf + pos, f2);
+        pos += strlen(f2);
+        buf[pos++] = '|';    
+    }
+    if(f3){
+        strcpy(buf + pos, f3);
+        pos += strlen(f3);
+        buf[pos++] = '|';
+    }
+    int total = 0;
+    //write pos bytes to the socket
+    while(total < pos){
+        int sent = write(fd, buf + total, pos - total);
+        if(sent < 0){
+            //overflow or I/O error
+            return -1;
+        }
+        total += sent;
+    }
+    return 0;
+}
+
 int main(int argc, char* argv[]) {
     if (argc != 2) {
         fprintf(stderr, "Must have 1 argument\n");

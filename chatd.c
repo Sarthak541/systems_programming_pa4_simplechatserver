@@ -68,11 +68,62 @@ static int read_body(int fd, char *buf, int n){
 int read_message(int fd, Message *msg){
     char version_str[8];
     char length_str[8];
+    int r;
     //field 1: version
     int r = read_each_field(fd, version_str, sizeof(version_str));
+    if(r<0){
+        return r;
+    }
+    if(strcmp(version_str, "1") != 0){
+        return 2;
+    }
+    msg->version = 1;
     //field 2: code
-
-    //
+    r = read_each_field(fd, msg->code, sizeof(msg->code));
+    if(r<0){
+        return r;
+    }
+    if(strcmp(msg->code, "NAM") != 0 &&
+       strcmp(msg->code, "SET") != 0 &&
+       strcmp(msg->code, "MSG") != 0 &&
+       strcmp(msg->code, "WHO") != 0 && 
+       strcmp(msg->code, "ERR") != 0){
+        return 2;
+    }
+    //field 3: body length
+    r = read_each_field(fd, length_str, sizeof(length_str));
+        if(r<0){
+        return r;
+    }
+    for(int i = 0; length_str[i] != '\0'; i++){
+        if(!isdigit((unsigned char)length_str[i])){
+            return -2;
+        }
+    }
+    msg->body_len = atoi(length_str);
+    if(msg->body_len < 0 || msg->body_len >= BODY_MAX){
+        return -2;
+    }
+    r = read_body(fd, msg->body, msg->body_len);
+    if(r < 0){
+        return r;
+    }
+    msg->body[msg->body_len] = '\0';
+    if(msg->body_len == 0 || msg->body[msg->body_len - 1] != '|'){
+        return -2;
+    }
+    msg->field_count = 0;
+    char *p = msg->body;
+    char *end = msg->body + msg->body_len;
+    while(p <end){
+        msg->fields[msg->field_count++] = p;
+        while(p < end && *p != '|'){
+            p++;
+        }
+        *p = '\0';
+        p++;
+    }
+    return 0;
 }
 
 int main(int argc, char* argv[]) {

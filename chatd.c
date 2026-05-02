@@ -336,13 +336,18 @@ int is_valid_message(const char *s){
     }
     return 1;
 }
-void handle_child(int signumber) {
-    while (waitpid(-1, NULL, WNOHANG) > 0) {
-    }
-}
 
-void handle_process(int return_socketfd, int listening_socketfd) {
+void * handle_process(void* return_socketfd) {
+
+    printf("TCP/IP Connection established!\n");
+    
+    close(*(int*)return_socketfd);
+    free(return_socketfd);
+
+    return NULL;
+
     //Find the users connected to socket
+    /*
     User *user = NULL;
     for(int i = 0; i < global_state.count; i++){
         if(global_state.users[i]->fd == return_socketfd){
@@ -387,6 +392,7 @@ void handle_process(int return_socketfd, int listening_socketfd) {
     }
     //MSG
     //WHO
+    */
 }
 
 int main(int argc, char* argv[]) {
@@ -449,12 +455,6 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    struct sigaction child_act;
-    child_act.sa_handler = handle_child;
-    sigemptyset(&child_act.sa_mask);
-    child_act.sa_flags = SA_RESTART;
-    sigaction(SIGCHLD, &child_act, NULL);
-
     
 
     //use sockaddr_storage because remote address can be ipv4 OR ipv6
@@ -466,16 +466,13 @@ int main(int argc, char* argv[]) {
             fprintf(stderr, "Error accepting socket\n");
             exit(EXIT_FAILURE);
         }
-        pid_t child = fork();
-        if (child == 0) {
-            //handles the socket, after handling closes the socket
-            fprintf(stdout, "Working TCP/IP!\n");
-            handle_process(return_socket, my_socket);
-            close(my_socket);
-            close(return_socket);
-            exit(EXIT_SUCCESS);
-        } 
-        close(return_socket);
+
+        pthread_t thread_id;
+        int *p_client_soc = (int*)malloc(sizeof(int));
+        *p_client_soc = return_socket;
+        //must close the return_socket inside the thread function
+        pthread_create(&thread_id, NULL, handle_process, p_client_soc);
+        pthread_detach(thread_id);
         
     }
     close(my_socket);

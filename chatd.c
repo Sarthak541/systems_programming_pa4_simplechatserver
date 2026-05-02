@@ -381,6 +381,68 @@ void message_handling(User *user, ServerState *state, Message *message){
     pthread_mutex_unlock(&state->lock);
 }
 
+void handling_WHO(User *user, ServerState *state, Message *message){
+    //Must have 1 field
+    if(message->field_count != 1){
+        send_error(user->fd, 0, "Unreadable");
+        return;
+    }
+    char *query = message->fields[0];
+    pthread_mutex_lock(&state->lock);
+    //WHo #all
+        if (strcmp(query, "#all") == 0) {
+        char response[BODY_MAX];
+        response[0] = '\0';
+
+        for (int i = 0; i < state->count; i++) {
+            User *u = state->users[i];
+            if (!u || !u->registered) continue;
+
+            char line[128];
+            if (u->status[0] != '\0') {
+                snprintf(line, sizeof(line), "%s: %s\n", u->name, u->status);
+            } else {
+                snprintf(line, sizeof(line), "%s\n", u->name);
+            }
+
+            strncat(response, line, sizeof(response) - strlen(response) - 1);
+        }
+
+        pthread_mutex_unlock(&state->lock);
+
+        sent_message(user->fd, "MSG", "#all", user->name, response);
+        return;
+    }
+    //WHO speific user
+    User *target = NULL;
+
+    for (int i = 0; i < state->count; i++) {
+        User *u = state->users[i];
+        if (u && u->registered && strcmp(u->name, query) == 0) {
+            target = u;
+            break;
+        }
+    }
+
+    if (target == NULL) {
+        pthread_mutex_unlock(&state->lock);
+        send_error(user->fd, 2, "Unknown recipient");
+        return;
+    }
+
+    char response[128];
+
+    if (target->status[0] != '\0') {
+        snprintf(response, sizeof(response), "%s: %s", target->name, target->status);
+    } else {
+        snprintf(response, sizeof(response), "%s", target->name);
+    }
+
+    pthread_mutex_unlock(&state->lock);
+
+    sent_message(user->fd, "MSG", "#all", user->name, response);
+}
+
 void * handle_process(void* return_socketfd) {
 
     printf("TCP/IP Connection established!\n");

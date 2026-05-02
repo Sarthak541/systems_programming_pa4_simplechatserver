@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200112L
+#define _XOPEN_SOURCE 700
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -8,7 +9,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <pthread.h>
-
+#include <signal.h>
+#include <sys/wait.h>
 
 #define BODY_MAX 100000
 #define MAX_FIELDS 4
@@ -327,6 +329,10 @@ int is_valid_message(const char *s){
     }
     return 1;
 }
+void handle_child(int signumber) {
+    while (waitpid(-1, NULL, WNOHANG) > 0) {
+    }
+}
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
@@ -367,24 +373,38 @@ int main(int argc, char* argv[]) {
         break;
     }
     freeaddrinfo(list);
-
-    //use sockaddr_storage because remote address can be ipv4 OR ipv6
-    struct sockaddr_storage remote_address;
-    socklen_t remote_address_len = sizeof(remote_address);
-    int return_socket = accept(my_socket, (struct sockaddr *)&remote_address, &remote_address_len);
-    if (return_socket < 0) {
-        fprintf(stderr, "Error accepting socket\n");
-        exit(EXIT_FAILURE);
-    }
-    else {
-        fprintf(stdout, "Working TCP/IP!\n");
-    }
-    close(return_socket);
-    close(my_socket);
-    
     if (info == NULL) {
         fprintf(stderr, "Unable to bind\n");
         exit(EXIT_FAILURE);
     }
+
+    struct sigaction child_act;
+    child_act.sa_handler = handle_child;
+    sigemptyset(&child_act.sa_mask);
+    child_act.sa_flags = SA_RESTART;
+    sigaction(SIGCHLD, &child_act, NULL);
+
+    
+
+    //use sockaddr_storage because remote address can be ipv4 OR ipv6
+    while (1) {
+        struct sockaddr_storage remote_address;
+        socklen_t remote_address_len = sizeof(remote_address);
+        int return_socket = accept(my_socket, (struct sockaddr *)&remote_address, &remote_address_len);
+        if (return_socket < 0) {
+            fprintf(stderr, "Error accepting socket\n");
+            exit(EXIT_FAILURE);
+        }
+        pid_t child = fork();
+        if (child == 0) {
+            //handles the socket, after handling closes the socket
+            fprintf(stdout, "Working TCP/IP!\n");
+            close(return_socket);
+            exit(EXIT_SUCCESS);
+        } 
+        close(return_socket);
+        
+    }
+    close(my_socket);
 
 }

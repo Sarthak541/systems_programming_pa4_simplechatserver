@@ -25,6 +25,7 @@ typedef struct {
     char name[MAX_NAME];
     char status[MAX_STATUS];
     int  registered;
+    int  is_connected; //1 if connected, 0 if disconnected
 } User;
 
 typedef struct {
@@ -33,6 +34,12 @@ typedef struct {
     pthread_mutex_t lock;
 } ServerState;
 
+//Why global_state: Need to know who is currently connected
+ServerState global_state = {
+    .users = {NULL},
+    .count = 0,
+    .lock = PTHREAD_MUTEX_INITIALIZER
+};
 
 typedef struct {
     int   version;              // always 1 for this protocol 
@@ -335,7 +342,51 @@ void handle_child(int signumber) {
 }
 
 void handle_process(int return_socketfd, int listening_socketfd) {
-
+    //Find the users connected to socket
+    User *user = NULL;
+    for(int i = 0; i < global_state.count; i++){
+        if(global_state.users[i]->fd == return_socketfd){
+            user = global_state.users[i];
+            break;
+        }
+    }
+    //if no user found
+    if(user == NULL){
+        close(return_socketfd);
+        return;
+    }
+    Message message;
+    int r = read_message(return_socketfd, &message);
+    //client disconnected
+    if(r == -1){
+        user->is_connected = 0;
+        return;
+    }
+    //I/0 Error
+    if(r == -2){
+        send_error(return_socketfd, 0, "Unreadable");
+        user->is_connected = 0;
+        return;
+    }
+    //unknown code
+    if(r == -2){
+        send_error(return_socketfd, 0, "Unreadable");
+        user->is_connected = 0;
+        return;
+    }
+    if(!user->registered && strcmp(message.code, "NAM") != 0){
+        send_error(return_socketfd, 0, "Unreadable");
+        user->is_connected = 0;
+        return;
+    }
+    if(strcmp(message.code, "NAM") == 0){
+        approving_username(user, &global_state, &message);
+    }
+    else if(strcmp(message.code, "SET") == 0){
+        update_status(user, &global_state, &message);
+    }
+    //MSG
+    //WHO
 }
 
 int main(int argc, char* argv[]) {

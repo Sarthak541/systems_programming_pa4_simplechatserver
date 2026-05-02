@@ -336,22 +336,38 @@ void handle_child(int signumber) {
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
-        fprintf(stderr, "Must have 1 argument\n");
+        fprintf(stderr, "Must have 1 arugment\n");
         exit(EXIT_FAILURE);
     }
+    //parsing host:port from argv[1]
+    char buffer[256];
+    strncpy(buffer, argv[1], sizeof(buffer));
+    buffer[255] = '\0';
+    //since colon separates host from port, figure out where the colon occurs
+    char *colon = strchr(buffer, ':');
+    if(colon == NULL){
+        fprintf(stderr, "Invalid format. Expected host:port\n");
+        exit(EXIT_FAILURE);
+    }
+    *colon = '\0';
+    char *host = buffer;
+    char *port = colon + 1;
+    if(*port == '\0'){
+        fprintf(stderr, "Need port\n");
+        exit(EXIT_FAILURE);
+    }
+
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
 
     struct addrinfo* list;
-    char* host = "localhost"; //testing purposes
-    char* port = "8080";
     int r = getaddrinfo(host, port, &hints, &list);
 
     if (r!=0) {
         //handles error specifically for getaddrinfo
-        gai_strerror(r);
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(r));
         exit(EXIT_FAILURE);
     }
     
@@ -406,5 +422,4 @@ int main(int argc, char* argv[]) {
         
     }
     close(my_socket);
-
 }

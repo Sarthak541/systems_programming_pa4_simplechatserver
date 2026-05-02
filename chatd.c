@@ -191,6 +191,13 @@ int sent_message(int fd, const char *code, const char *f1, const char *f2, const
     return 0;
 }
 
+//used to send customizable error messages based on the specific scenario
+void send_error(int fd, int code, const char *explanation){
+    char code_str[4];
+    snprintf(code_str, sizeof(code_str), "%d", code);
+    sent_message(fd, "ERR", code_str, explanation, NULL);
+}
+
 //checks name not empty, every character legal, does exceed 32 chars
 int is_valid_name(const char *s){
     int len = 0;

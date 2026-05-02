@@ -393,21 +393,22 @@ void handling_WHO(User *user, ServerState *state, Message *message){
         if (strcmp(query, "#all") == 0) {
         char response[BODY_MAX];
         response[0] = '\0';
-
         for (int i = 0; i < state->count; i++) {
             User *u = state->users[i];
-            if (!u || !u->registered) continue;
-
+            if (!u || !u->registered) {
+                continue;
+            }
+            if(response[0] != '\0'){
+                strncat(response, "\n", sizeof(response) -strlen(response) -1);
+            }
             char line[128];
             if (u->status[0] != '\0') {
                 snprintf(line, sizeof(line), "%s: %s\n", u->name, u->status);
             } else {
                 snprintf(line, sizeof(line), "%s\n", u->name);
             }
-
             strncat(response, line, sizeof(response) - strlen(response) - 1);
         }
-
         pthread_mutex_unlock(&state->lock);
 
         sent_message(user->fd, "MSG", "#all", user->name, response);
@@ -415,7 +416,6 @@ void handling_WHO(User *user, ServerState *state, Message *message){
     }
     //WHO speific user
     User *target = NULL;
-
     for (int i = 0; i < state->count; i++) {
         User *u = state->users[i];
         if (u && u->registered && strcmp(u->name, query) == 0) {
@@ -423,23 +423,22 @@ void handling_WHO(User *user, ServerState *state, Message *message){
             break;
         }
     }
-
     if (target == NULL) {
         pthread_mutex_unlock(&state->lock);
         send_error(user->fd, 2, "Unknown recipient");
         return;
     }
-
     char response[128];
-
+    //if user not found, send error 2
     if (target->status[0] != '\0') {
+        //if user not found, send error 2
         snprintf(response, sizeof(response), "%s: %s", target->name, target->status);
     } else {
-        snprintf(response, sizeof(response), "%s", target->name);
+        //if user has no status, respond with "no status"
+        snprintf(response, sizeof(response), "No status");
     }
-
     pthread_mutex_unlock(&state->lock);
-
+    //send the result back only to the user who sent WHO
     sent_message(user->fd, "MSG", "#all", user->name, response);
 }
 

@@ -329,8 +329,8 @@ int is_valid_message(const char *s){
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        fprintf(stderr, "Must have 1 argument\n");
+    if (argc != 3) {
+        fprintf(stderr, "Write: %s, <host> <port>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
     struct addrinfo hints;
@@ -339,8 +339,8 @@ int main(int argc, char* argv[]) {
     hints.ai_socktype = SOCK_STREAM;
 
     struct addrinfo* list;
-    char* host = "localhost"; //testing purposes
-    char* port = "8080";
+    char* host = argv[1];
+    char* port = argv[2];
     int r = getaddrinfo(host, port, &hints, &list);
 
     if (r!=0) {

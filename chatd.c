@@ -337,6 +337,50 @@ int is_valid_message(const char *s){
     return 1;
 }
 
+void message_handling(User *user, ServerState *state, Message *message){
+    if(message->field_count != 3){
+        send_error(user->fd, 0, "Unreadable");
+        return;
+    }
+    char *recipient = message->fields[1];
+    char *text = message->fields[2];
+    //validate message
+    if(!is_valid_message(text)){
+        send_error(user->fd, 3, "Illegal Character");
+        return;
+    }
+    //broadcast to #all
+    if(strcmp(recipient, "#all") == 0){
+        pthread_mutex_lock(&state->lock);
+        for(int i = 0; i < state->count; i++){
+            User *u = state->users[i];
+            if(u && u->registered && u->is_connected){
+                sent_message(u->fd, "MSG", user->name, "#all", text);
+            }
+        }
+        pthread_mutex_unlock(&state->lock);
+        return;
+    }
+    //private message
+    pthread_mutex_lock(&state->lock);
+    User *target = NULL;
+    for(int i = 0; i < state->count; i++){
+        User *u = state->users[i];
+        if(u && u->registered && strcmp(u->name, recipient) == 0){
+            target = u;
+            break;
+        }
+    }
+    if(target == NULL){
+        pthread_mutex_unlock(&state->lock);
+        send_error(user->fd, 2, "Unknown recipient");
+        return;
+    }
+    //send only to target
+    sent_message(target->fd, "MSG", user->name, target->name, text);
+    pthread_mutex_unlock(&state->lock);
+}
+
 void * handle_process(void* return_socketfd) {
 
     printf("TCP/IP Connection established!\n");

@@ -334,8 +334,8 @@ void handle_child(int signumber) {
     }
 }
 
-void handle_process(int socketfd) {
-    
+void handle_process(int return_socketfd, int listening_socketfd) {
+
 }
 
 int main(int argc, char* argv[]) {
@@ -419,7 +419,7 @@ int main(int argc, char* argv[]) {
         if (child == 0) {
             //handles the socket, after handling closes the socket
             fprintf(stdout, "Working TCP/IP!\n");
-            handle_process(return_socket);
+            handle_process(return_socket, my_socket);
             close(return_socket);
             exit(EXIT_SUCCESS);
         } 

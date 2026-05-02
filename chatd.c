@@ -420,6 +420,7 @@ int main(int argc, char* argv[]) {
             //handles the socket, after handling closes the socket
             fprintf(stdout, "Working TCP/IP!\n");
             handle_process(return_socket, my_socket);
+            close(my_socket);
             close(return_socket);
             exit(EXIT_SUCCESS);
         } 

@@ -191,7 +191,7 @@ int sent_message(int fd, const char *code, const char *f1, const char *f2, const
     return 0;
 }
 
-//used to send customizable error messages based on the specific scenario
+//used to send customizable error messages based on the specific scenario (especially when approving)
 void send_error(int fd, int code, const char *explanation){
     char code_str[4];
     snprintf(code_str, sizeof(code_str), "%d", code);
@@ -217,6 +217,43 @@ int is_valid_name(const char *s){
         }
     }
     return 1;
+}
+
+void approving_username(User *user, ServerState *state, Message *msg){
+    //Must have 1 field only
+    if(msg->field_count != 1){
+        send_error(user->fd, 0, "Unreadable");
+        return;
+    }
+    char *requested_name = msg->fields[0];
+    //check if too long
+    if(strlen(requested_name) > 32){
+        send_error(user->fd, 4, "Username too long");
+        return;
+    }
+    //illegal or empty characters use is_valid_name
+    if(!is_valid_name(requested_name)){
+        send_error(user->fd, 3, "Illegal or Empty Character");
+        return;
+    }
+    //check if name is in use
+    //accesses address of lock to see whether has already been taken
+    pthread_mutex_lock(&state->lock);
+    for(int i = 0; i< state->count; i++){
+        if(state->users[i]->registered && strcmp(state->users[i]->name, requested_name) == 0){
+            //"unlocks" means username is taken
+            pthread_mutex_unlock(&state->lock);
+            send_error(user->fd, 1, "Name in use");
+            return;
+        }
+    }
+    //Register/Approve the username
+    strncpy(user->name, requested_name, MAX_NAME - 1);
+    user->name[MAX_NAME - 1] = '\0';
+    user->registered = 1;
+    //reserve the username
+    pthread_mutex_unlock(&state->lock);
+    sent_message(user->fd, "MSG", "#all", user->name, "Welcome to the chat!");
 }
 
 //status much be between 0 - 64 characters

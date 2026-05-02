@@ -275,6 +275,40 @@ int is_valid_status(const char *s){
     return 1;
 }
 
+void update_status(User *user, ServerState *state, Message *msg){
+    //Must have 1 field only
+    if(msg->field_count != 1){
+        send_error(user->fd, 0, "Unreadable");
+        return;
+    }
+    char *requested_status = msg->fields[0];
+        //check if too long
+    if(strlen(requested_status) > 64){
+        send_error(user->fd, 4, "Status too long");
+        return;
+    }
+    //illegal or empty characters use is_valid_name
+    if(!is_valid_status(requested_status)){
+        send_error(user->fd, 3, "Illegal or Empty Character");
+        return;
+    }
+    strncpy(user->status, requested_status, MAX_STATUS - 1);
+    user->status[MAX_STATUS - 1] = '\0';
+    //non-empty, then broadcast 
+    char broadcast[BODY_MAX];
+    if(user->status[0] != '\0'){
+        //broadcast string logic
+        snprintf(broadcast, sizeof(broadcast), "%s is now \"%s\"", user->name, user->status);
+        pthread_mutex_lock(&state->lock);
+        for(int i = 0; i < state->count; i++){
+            if(state->users[i]->registered){
+                sent_message(state->users[i]->fd, "MSG", "#all", "#all", broadcast);
+            }
+        }
+    pthread_mutex_unlock(&state->lock);
+    }
+}
+
 //max len: 80, 32 - 126 chars, at least 1 arg
 int is_valid_message(const char *s){
     if(s == NULL || s[0] == '\0'){
@@ -337,7 +371,7 @@ int main(int argc, char* argv[]) {
     //use sockaddr_storage because remote address can be ipv4 OR ipv6
     struct sockaddr_storage remote_address;
     socklen_t remote_address_len = sizeof(remote_address);
-    int return_socket = accept(my_socket, &remote_address, &remote_address_len);
+    int return_socket = accept(my_socket, (struct sockaddr *)&remote_address, &remote_address_len);
     if (return_socket < 0) {
         fprintf(stderr, "Error accepting socket\n");
         exit(EXIT_FAILURE);

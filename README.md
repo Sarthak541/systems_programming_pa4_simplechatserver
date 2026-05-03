@@ -13,59 +13,25 @@ Our testing can be broken up into two categories: (1)compilation testing,(2)comp
 
 We would also want to first test all the cases given in the write-up and see if the same output is given. If the output matches, we know that part of the server is working correctly. There are seven of these. Then, we wrote 3 of our own test cases to cover scenarios that the original 7 did not address: duplicate name registration (ERR 1), messaging a user who is not connected (ERR 2), and querying WHO for a user who is not connected (ERR 2).
 
-## Testing Suite
-
-Test Cases Given in the Write-Up
-
-Input: 1|NAM|4|Bob|
-Output: 1|MSG|30|#all|Bob|Welcome to the chat!|
-What it tests: successful registration — server accepts a valid name, adds user to #all, and sends welcome message
-
-Input: 1|SET|17|Smiling politely|
-Output: 1|MSG|40|#all|#all|Bob is now "Smiling politely"|
-What it tests: Setting a non-empty status broadcasts the status change to all users in #all
-
-Input: 1|MSG|28||Alice|Private message to Alice|
-Output: 1|MSG|35|Bob|Alice|Private message to Alice|
-What it tests: Private message forwarding — server replaces empty sender field with real username, sends only to Alice not to everyone
-
-Input: 1|MSG|20||#all|Hello, world!|
-Output: 1|MSG|23|Bob|#all|Hello, world!|
-What it tests: Broadcast message — server replaces empty sender field with real username and forwards to all connected users
-
-Input: 1|WHO|6|Alice|
-Output: 1|MSG|33|#all|Bob|Alice: I was here first|
-What it tests: WHO query for a specific user who has a status set — response is "name: status"
-
-Input: 1|WHO|6|Carol|
-Output: 1|MSG|20|#all|Bob|No status|
-What it tests: WHO query for a specific user who has no status set — response is "No status"
-
-Input: 1|WHO|5|#all|
-Output: 1|MSG|61|#all|Bob|Alice: I was here first\nBob: Smiling politely\nCarol|
-What it tests: WHO query for entire room — response lists all users with their statuses, users with no status show name only, separated by newlines
-
-Additional Test Cases
-
-Input: 1|NAM|4|Bob| (Bob already registered), second client sends 1|NAM|4|Bob|
-Output: 1|ERR|13|1|Name in use|
-What it tests: duplicate name registration — server rejects a name already in use with ERR 1 and second client stays unregistered
-
-Input: 1|MSG|22||Carol|Hello Carol!| (Carol is not connected)
-Output: 1|ERR|9|2|Unknown recipient|
-What it tests: private message to nonexistent user — server returns ERR 2 when recipient is not currently connected
-
-Input: 1|WHO|6|Carol| (Carol is not connected)
-Output: 1|ERR|9|2|Unknown recipient|
-What it tests: WHO query for nonexistent user — server returns ERR 2 when the queried name is not currently connected
-
 ## Test File
-We wrote a C test file (test.c) which tests the key logic of each function using pipes to simulate socket communication. Each test calls a function directly, passes it a crafted Message struct, and reads back the response from the pipe to verify the output. The tests cover the following functions:
+We wrote a C test file (test.c) which tests the key logic of each function using pipes to simulate socket communication. Each test calls a function directly, passes it a crafted Message struct, and reads back the response from the pipe to verify the output. 
 
-- approving_username: tests successful registration and duplicate name rejection
-- update_status: tests that a non-empty status is stored and broadcast to all registered users
-- message_handling: tests broadcast to #all, private message forwarding, and unknown recipient error
-- handling_WHO: tests single user with status, single user with no status, unknown user error, and full room listing
+## Testing Suite
+We are using the five scenarios:
+
+test_NAM_basic:
+Sends a NAM message with the name "Bob" to approving_username. Checks that the user is marked as registered and that the reply sent back is a MSG with the welcome text "Welcome to the chat!".
+
+test_SET_basic:
+Sets up two users, Bob and Alice, both registered. Sends a SET message with status "Busy" on behalf of Bob. Checks that Bob's status field is updated to "Busy" and that Alice receives a broadcast MSG on her socket.
+
+test_MSG_private:
+Sets up two users, Bob and Alice, both registered. Sends a MSG from Bob to Alice with body "Hello". Checks that Alice's socket receives a MSG reply with the correct code.
+
+test_MSG_broadcast:
+Sets up two users, Bob and Alice, both registered. Sends a MSG from Bob to #all with body "Hi everyone". Checks that both Bob's socket and Alice's socket each receive a MSG reply.
+
+test_WHO_basic: Sets up two users, Bob and Alice. Alice has status "Online". Sends a WHO message querying "Alice" on behalf of Bob. Checks that Bob's socket receives a MSG reply containing Alice's name and status.
 
 To compile and run the test file:
 ```bash

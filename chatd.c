@@ -394,7 +394,6 @@ void * handle_process(void* return_socketfd) {
     //WHO
     */
 }
-
 int main(int argc, char* argv[]) {
     if (argc != 2) {
         fprintf(stderr, "Must have 1 arugment\n");

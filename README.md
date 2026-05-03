@@ -10,9 +10,6 @@ In this project we created a simple chat server in the C programming language.  
 ## Testing Methodology
 Our testing can be broken up into two categories: (1)compilation testing,(2)component testing and(3)holistic testing. (1) Compilation testing is as it sounds: testing to see whether the code compiles either through gcc or make. (2) Component testing meant that we would test each function(or component) individually to see if that particular part was working correctly. By doing so, we could isolate and diagnose where problems were occurring. (3)Holistic testing means testing to see if the entirety of the code is working correctly. In other words, if the parts are working correctly, do they build on top of each other and together produce the results we want? 
 
-
-We would also want to first test all the cases given in the write-up and see if the same output is given. If the output matches, we know that part of the server is working correctly. There are seven of these. Then, we wrote 3 of our own test cases to cover scenarios that the original 7 did not address: duplicate name registration (ERR 1), messaging a user who is not connected (ERR 2), and querying WHO for a user who is not connected (ERR 2).
-
 ## Test File
 We wrote a C test file (test.c) which tests the key logic of each function using pipes to simulate socket communication. Each test calls a function directly, passes it a crafted Message struct, and reads back the response from the pipe to verify the output. 
 

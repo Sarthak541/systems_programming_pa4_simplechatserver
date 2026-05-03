@@ -33,10 +33,4 @@ Sets up two users, Bob and Alice, both registered. Sends a MSG from Bob to #all 
 
 test_WHO_basic: Sets up two users, Bob and Alice. Alice has status "Online". Sends a WHO message querying "Alice" on behalf of Bob. Checks that Bob's socket receives a MSG reply containing Alice's name and status.
 
-To compile and run the test file:
-```bash
-gcc -Wall -Wextra -pthread -o test tests.c
-./test
-```
-
-Each test prints PASSED or FAILED along with the specific check that failed if any. The final line prints a summary of how many tests passed and how many failed.
+All tests were done by via the provided project client.  All tests passed.

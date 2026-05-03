@@ -14,11 +14,9 @@
 
 #define BODY_MAX 100000
 #define MAX_FIELDS 4
-#define MAX_CONNECTION 10
+#define MAX_CONNECTION 100
 #define MAX_NAME     33
 #define MAX_STATUS   65
-#define MAX_CLIENTS  100
-
 
 typedef struct {
     int  fd;
@@ -29,7 +27,7 @@ typedef struct {
 } User;
 
 typedef struct {
-    User           *users[MAX_CLIENTS];
+    User           *users[MAX_CONNECTION];
     int             count;
     pthread_mutex_t lock;
 } ServerState;
@@ -77,6 +75,7 @@ static int read_each_field(int fd, char *buf, int max){
         buf[i++] = c;
     }
 }
+
 //reads the number of bytes obtained from read_each_field and puts it in msg
 static int read_body(int fd, char *buf, int n){
     int total = 0;
@@ -443,62 +442,99 @@ void handling_WHO(User *user, ServerState *state, Message *message){
 }
 
 void * handle_process(void* return_socketfd) {
-
+    int fd = *(int*)return_socketfd;
     printf("TCP/IP Connection established!\n");
-    
-    close(*(int*)return_socketfd);
-    free(return_socketfd);
 
-    return NULL;
+    // Initialize user profile structure before we add it to the state
+    User *current_user = (User*)malloc(sizeof(User));
+    memset(current_user, 0, sizeof(User));
+    current_user->fd = fd;
+    current_user->is_connected = 1;
 
-    //Find the users connected to socket
-    /*
-    User *user = NULL;
-    for(int i = 0; i < global_state.count; i++){
-        if(global_state.users[i]->fd == return_socketfd){
-            user = global_state.users[i];
+    Message msg;
+    int name_approved = 0;
+
+    // Phase 1: Wait for a valid NAM message
+    while (!name_approved) {
+        int r = read_message(fd, &msg);
+        
+        if (r < 0) {
+            break; // Drop connection on I/O error or disconnect
+        }
+        if (r > 0) {
+            // The server sends error 0 if the protocol message is ill-formed or of an unknown protocol version or message type[cite: 90].
+            // Error 0 is fatal, and the server should close the connection after sending it[cite: 95].
+            send_error(fd, 0, "Unreadable"); 
+            break;
+        }
+
+        // After connecting, a client must send NAM to choose a screen name[cite: 51].
+        if (strcmp(msg.code, "NAM") != 0) {
+            // Treat out-of-order messages before authentication as fatal
+            send_error(fd, 0, "Unreadable");
+            break; 
+        }
+
+        // approving_username acts as a handler: checking bounds, invalid characters, duplicates and sending error 1-4.
+        // It also modifies `registered` to 1 if fully validated.
+        approving_username(current_user, &global_state, &msg);
+
+        if (current_user->registered) {
+            name_approved = 1;
+        }
+    }
+
+    // Abort if name was never correctly established
+    if (!name_approved) {
+        close(fd);
+        free(return_socketfd);
+        free(current_user);
+        return NULL;
+    }
+
+    // Add fully registered and authenticated user to the global tracker
+    pthread_mutex_lock(&global_state.lock);
+    if (global_state.count < MAX_CONNECTION) {
+        global_state.users[global_state.count++] = current_user;
+    }
+    pthread_mutex_unlock(&global_state.lock);
+
+    // Phase 2: Handle incoming chat events
+    while (1) {
+        int r = read_message(fd, &msg);
+        
+        if (r < 0) {
+            break; // User unexpectedly terminated or timed out
+        }
+        if (r > 0) {
+            // Error 0 is fatal, and the server should close the connection after sending it[cite: 95].
+            send_error(fd, 0, "Unreadable"); 
+            break; 
+        }
+
+        if (strcmp(msg.code, "MSG") == 0) {
+            message_handling(current_user, &global_state, &msg);
+        } else if (strcmp(msg.code, "SET") == 0) {
+            update_status(current_user, &global_state, &msg);
+        } else if (strcmp(msg.code, "WHO") == 0) {
+            handling_WHO(current_user, &global_state, &msg);
+        } else {
+            // The server sends error 0 if the protocol message is ill-formed or of an unknown protocol version or message type[cite: 90].
+            send_error(fd, 0, "Unreadable");
             break;
         }
     }
-    //if no user found
-    if(user == NULL){
-        close(return_socketfd);
-        return;
-    }
-    Message message;
-    int r = read_message(return_socketfd, &message);
-    //client disconnected
-    if(r == -1){
-        user->is_connected = 0;
-        return;
-    }
-    //I/0 Error
-    if(r == -2){
-        send_error(return_socketfd, 0, "Unreadable");
-        user->is_connected = 0;
-        return;
-    }
-    //unknown code
-    if(r == -2){
-        send_error(return_socketfd, 0, "Unreadable");
-        user->is_connected = 0;
-        return;
-    }
-    if(!user->registered && strcmp(message.code, "NAM") != 0){
-        send_error(return_socketfd, 0, "Unreadable");
-        user->is_connected = 0;
-        return;
-    }
-    if(strcmp(message.code, "NAM") == 0){
-        approving_username(user, &global_state, &message);
-    }
-    else if(strcmp(message.code, "SET") == 0){
-        update_status(user, &global_state, &message);
-    }
-    //MSG
-    //WHO
-    */
+
+    // Ensure state cleanup upon exiting read loop
+    current_user->is_connected = 0;
+    current_user->registered = 0; 
+    
+    close(fd);
+    free(return_socketfd);
+    
+    return NULL;
 }
+
 int main(int argc, char* argv[]) {
     if (argc != 2) {
         fprintf(stderr, "Must have 1 arugment\n");

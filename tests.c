@@ -123,109 +123,6 @@ void test_SET_broadcasts() {
     close(p_alice[0]); close(p_alice[1]);
 }
 
-c
-#define _POSIX_C_SOURCE 200112L
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <pthread.h>
-
-#define BODY_MAX 100000
-#define MAX_FIELDS 4
-#define MAX_NAME 33
-#define MAX_STATUS 65
-#define MAX_CLIENTS 100
-
-/* paste structs and functions from chatd.c here */
-
-int passed = 0;
-int failed = 0;
-
-void check(const char *test_name, int condition) {
-    if (condition) {
-        fprintf(stdout, "PASSED: %s\n", test_name);
-        passed++;
-    } else {
-        fprintf(stderr, "FAILED: %s\n", test_name);
-        failed++;
-    }
-}
-
-//Input:    1|NAM|4|Bob|
-//Expected: 1|MSG|30|#all|Bob|Welcome to the chat!|
-//What we are testing: basic registration — valid unused name gets registered and receives a welcome message
-void test_NAM_basic() {
-    int p[2]; pipe(p);
-    User user;
-    memset(&user, 0, sizeof(user));
-    user.fd = p[1];
-    Message msg;
-    memset(&msg, 0, sizeof(msg));
-    strcpy(msg.code, "NAM");
-    strcpy(msg.body, "Bob|");
-    msg.fields[0] = msg.body;
-    msg.field_count = 1;
-    ServerState state;
-    memset(&state, 0, sizeof(state));
-    pthread_mutex_init(&state.lock, NULL);
-    approving_username(&user, &state, &msg);
-    check("NAM_basic: user is registered",      user.registered == 1);
-    check("NAM_basic: name is Bob",             strcmp(user.name, "Bob") == 0);
-    Message reply;
-    read_message(p[0], &reply);
-    check("NAM_basic: reply code is MSG",       strcmp(reply.code, "MSG") == 0);
-    check("NAM_basic: sender is #all",          strcmp(reply.fields[0], "#all") == 0);
-    check("NAM_basic: recipient is Bob",        strcmp(reply.fields[1], "Bob") == 0);
-    check("NAM_basic: welcome text correct",
-          strcmp(reply.fields[2], "Welcome to the chat!") == 0);
-    close(p[0]); close(p[1]);
-}
-
-//Input:    1|SET|17|Smiling politely|
-//Expected: 1|MSG|40|#all|#all|Bob is now "Smiling politely"|
-//What we are testing: setting a non-empty status broadcasts the status change to all registered users
-void test_SET_broadcasts() {
-    int p_bob[2]; pipe(p_bob);
-    int p_alice[2]; pipe(p_alice);
-    User bob;
-    memset(&bob, 0, sizeof(bob));
-    strcpy(bob.name, "Bob");
-    bob.fd = p_bob[1];
-    bob.registered = 1;
-    User alice;
-    memset(&alice, 0, sizeof(alice));
-    strcpy(alice.name, "Alice");
-    alice.fd = p_alice[1];
-    alice.registered = 1;
-    ServerState state;
-    memset(&state, 0, sizeof(state));
-    pthread_mutex_init(&state.lock, NULL);
-    state.users[0] = &bob;
-    state.users[1] = &alice;
-    state.count = 2;
-    Message msg;
-    memset(&msg, 0, sizeof(msg));
-    strcpy(msg.code, "SET");
-    strcpy(msg.body, "Smiling politely|");
-    msg.fields[0] = msg.body;
-    msg.field_count = 1;
-    update_status(&bob, &state, &msg);
-    check("SET_broadcasts: bob status updated",
-          strcmp(bob.status, "Smiling politely") == 0);
-    Message alice_reply;
-    read_message(p_alice[0], &alice_reply);
-    check("SET_broadcasts: alice receives broadcast",
-          strcmp(alice_reply.code, "MSG") == 0);
-    check("SET_broadcasts: sender is #all",
-          strcmp(alice_reply.fields[0], "#all") == 0);
-    check("SET_broadcasts: broadcast text correct",
-          strcmp(alice_reply.fields[2], "Bob is now \"Smiling politely\"") == 0);
-    close(p_bob[0]); close(p_bob[1]);
-    close(p_alice[0]); close(p_alice[1]);
-}
-
 //Input:    1|MSG|28||Alice|Private message to Alice|
 //Expected: 1|MSG|35|Bob|Alice|Private message to Alice| (sent only to Alice)
 //What we are testing: private message is forwarded only to the target user with sender field replaced by real name
@@ -542,4 +439,5 @@ int main() {
             passed, failed);
     return failed > 0 ? 1 : 0;
 }
+
 

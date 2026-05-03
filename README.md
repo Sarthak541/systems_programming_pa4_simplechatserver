@@ -35,7 +35,7 @@ test_WHO_basic: Sets up two users, Bob and Alice. Alice has status "Online". Sen
 
 To compile and run the test file:
 ```bash
-gcc -Wall -Wextra -pthread -o test test.c
+gcc -Wall -Wextra -pthread -o test tests.c
 ./test
 ```
 

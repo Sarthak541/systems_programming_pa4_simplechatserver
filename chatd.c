@@ -462,13 +462,13 @@ void * handle_process(void* return_socketfd) {
             break; // Drop connection on I/O error or disconnect
         }
         if (r > 0) {
-            // The server sends error 0 if the protocol message is ill-formed or of an unknown protocol version or message type[cite: 90].
-            // Error 0 is fatal, and the server should close the connection after sending it[cite: 95].
+            // The server sends error 0 if the protocol message is ill-formed or of an unknown protocol version or message type.
+            // Error 0 is fatal, and the server should close the connection after sending it.
             send_error(fd, 0, "Unreadable"); 
             break;
         }
 
-        // After connecting, a client must send NAM to choose a screen name[cite: 51].
+        // After connecting, a client must send NAM to choose a screen name.
         if (strcmp(msg.code, "NAM") != 0) {
             // Treat out-of-order messages before authentication as fatal
             send_error(fd, 0, "Unreadable");
@@ -507,7 +507,7 @@ void * handle_process(void* return_socketfd) {
             break; // User unexpectedly terminated or timed out
         }
         if (r > 0) {
-            // Error 0 is fatal, and the server should close the connection after sending it[cite: 95].
+            // Error 0 is fatal, and the server should close the connection after sending it.
             send_error(fd, 0, "Unreadable"); 
             break; 
         }
@@ -519,7 +519,7 @@ void * handle_process(void* return_socketfd) {
         } else if (strcmp(msg.code, "WHO") == 0) {
             handling_WHO(current_user, &global_state, &msg);
         } else {
-            // The server sends error 0 if the protocol message is ill-formed or of an unknown protocol version or message type[cite: 90].
+            // The server sends error 0 if the protocol message is ill-formed or of an unknown protocol version or message type.
             send_error(fd, 0, "Unreadable");
             break;
         }
